@@ -1,19 +1,26 @@
+// src/index.tsx
 import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
+import { createRoot } from 'react-dom/client';
+import { ApolloProvider, ApolloClient, InMemoryCache } from '@apollo/client';
 import App from './App';
-import reportWebVitals from './reportWebVitals';
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+const client = new ApolloClient({
+  uri: 'https://countries.trevorblades.com/graphql', // Replace with your GraphQL endpoint
+  cache: new InMemoryCache(),
+});
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+const rootElement = document.getElementById('root');
+
+if (rootElement) {
+  const root = createRoot(rootElement);
+
+  root.render(
+    <ApolloProvider client={client}>
+      <App />
+    </ApolloProvider>
+  );
+} else {
+  console.error("Element with id 'root' not found in the DOM.");
+}
+
+

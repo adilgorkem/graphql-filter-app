@@ -1,0 +1,39 @@
+
+.input {
+    width: 30%;
+    height: 40px;
+    border: 2px solid rgb(98, 98, 98);
+    border-radius: 5px;
+    outline: none;
+    text-align: center;
+}
+
+.input::placeholder {
+    color: rgb(98, 98, 98);
+    font-style: italic;
+}
+
+.input:focus {
+    box-shadow: 2px 2px 5px rgb(98, 98, 98);
+}
+
+.input:focus::placeholder {
+    color: transparent;
+}
+
+.container {
+    width: 50%;
+    height: 40rem;
+    overflow-y: scroll;
+    margin-top: 20px;
+    border: 2px solid rgb(98, 98, 98);
+    border-radius: 5px;
+    position: absolute;
+    top: 15%;
+    left: 25%;
+    background-color: rgb(87, 123, 156);
+}
+
+.list {
+    list-style-type: none;
+}
