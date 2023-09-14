@@ -6,7 +6,7 @@ import CountryList from './components/CountryList';
 const App: React.FC = () => {
   return (
     <div className="App">
-      <h1>Country List</h1>
+      <h2>Country List</h2>
       <CountryList />
     </div>
   );

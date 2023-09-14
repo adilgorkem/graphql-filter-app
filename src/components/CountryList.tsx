@@ -1,8 +1,21 @@
-// src/components/CountryList.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import { GET_COUNTRIES } from '../queries/countriesQuery';
 import './CountryList.css';
+
+interface Country {
+    code: string;
+    name: string;
+    native: string;
+    capital: string;
+    emoji: string;
+    currency: string;
+    languages: {
+        code: string;
+        name: string;
+    }[];
+}
 
 const predefinedColors = ['#CCCCCC', '#93CDE1', '#ECE99A', '#CFF5A1', '#3D3D3D'];
 
@@ -18,98 +31,84 @@ const findUnusedColorIndex = (usedIndexes: number[]) => {
 const CountryList: React.FC = () => {
     const { loading, error, data } = useQuery(GET_COUNTRIES);
     const [input, setInput] = useState<string>('');
-    const [filter, setFilter] = useState<string>('');
     const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
     const [selectedColorIndex, setSelectedColorIndex] = useState<number | null>(null);
     const [usedColorIndexes, setUsedColorIndexes] = useState<number[]>([]);
-    const [groupBy, setGroupBy] = useState<string | null>(null);
+    const [groupingOption, setGroupingOption] = useState<string>('currency');
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const inputValue = event.target.value;
         setInput(inputValue);
+        setSelectedCountry(null);
     };
 
-    useEffect(() => {
-        const delay = setTimeout(() => {
-            const inputLower = input.toLowerCase();
-            if (inputLower.startsWith('search:')) {
-                // Extract the groupBy value from the input
-                const groupByValue = inputLower.split('group:')[1];
-                setGroupBy(groupByValue);
-                // Remove the groupBy part from the filter
-                setFilter(inputLower.split('group:')[0]);
-            } else {
-                setGroupBy(null);
-                setFilter(inputLower);
-            }
-        }, 500); // Adjust the delay as needed (e.g., 500 milliseconds)
-
-        return () => {
-            clearTimeout(delay);
-        };
-    }, [input]);
-
     const handleCountryClick = (code: string) => {
-        // Toggle selection state for the clicked country
+        // Toggle selection
         if (selectedCountry === code) {
             setSelectedCountry(null);
             setSelectedColorIndex(null);
         } else {
-            setSelectedCountry(code);
-
-            // Find the first available color index that is not already in use
-            const unusedIndex = findUnusedColorIndex(usedColorIndexes);
-
-            setSelectedColorIndex(unusedIndex);
-
-            // Update the list of used color indexes
-            setUsedColorIndexes([...usedColorIndexes, unusedIndex]);
+            selectCountry(code);
         }
     };
+
+    const selectCountry = (code: string) => {
+        setSelectedCountry(code);
+        // Find the first available color index that is not already in use
+        const unusedIndex = findUnusedColorIndex(usedColorIndexes);
+        setSelectedColorIndex(unusedIndex);
+        // Updates the list of used color indexes
+        setUsedColorIndexes([...usedColorIndexes, unusedIndex]);
+    }
+
+    const handleGroupingInputChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        setGroupingOption(event.target.value);
+    };
+
+    // Filter countries based on search input
+    const filteredCountries = data && data.countries && data.countries.filter((country:any) => country.name.toLowerCase().includes(input.toLowerCase()));
+    
+
+    // Group the filtered countries by the selected grouping option
+    const groupedCountries: { [key: string]: Country[] } = {};
+
+    filteredCountries && filteredCountries.forEach((country:any) => {
+        let key = country[groupingOption];
+        if (groupingOption === 'languages') {
+            // If grouping by languages, create a comma-separated string of language names as the key
+            key = country.languages.map((lang: any) => lang.name).join(', ');
+          }
+        if (!groupedCountries[key]) {
+            groupedCountries[key] = [];
+        }
+        groupedCountries[key].push(country);
+    });
+
+    //Select and 10th or last country
+    useEffect(() => {
+        if(!selectedCountry && input.length) {
+            const listElements = document.querySelectorAll('li');
+            let length = listElements.length;
+            let selectedIndex = 0;
+            if(length > 9) {
+                selectedIndex = 9;
+            } else {
+                selectedIndex = length - 1;
+            }
+            const countryCode = listElements[selectedIndex] && listElements[selectedIndex].getAttribute("data-country-code");
+            if(countryCode) {
+                selectCountry(countryCode);
+            }
+        }
+        
+    }, [input])
 
     if (loading) return <p>Loading...</p>;
     if (error) return <p>Error: {error.message}</p>;
 
-    // Apply filtering based on the 'searchTerm' and 'groupBy'
-    const filteredCountries = data.countries.filter((country: any) => {
-        const lowerCaseName = (country.name || '').toLowerCase();
-        const lowerCaseCode = (country.code || '').toLowerCase();
-        const lowerCaseNative = (country.native || '').toLowerCase();
-        const lowerCaseCapital = (country.capital || '').toLowerCase();
-        const lowerCaseEmoji = (country.emoji || '').toLowerCase();
-        const lowerCaseCurrency = (country.currency || '').toLowerCase();
-
-        const filterLower = filter.trim();
-
-        if (filterLower && filterLower.startsWith('search:')) {
-            const groupByLower = groupBy ? groupBy.trim() : '';
-            if (groupByLower) {
-                return (
-                    lowerCaseCurrency.includes(groupByLower) &&
-                    (lowerCaseName.includes(filterLower) ||
-                        lowerCaseCode.includes(filterLower) ||
-                        lowerCaseNative.includes(filterLower) ||
-                        lowerCaseCapital.includes(filterLower) ||
-                        lowerCaseEmoji.includes(filterLower) ||
-                        lowerCaseCurrency.includes(filterLower))
-                );
-            }
-        } else {
-            return (
-                lowerCaseName.includes(filterLower) ||
-                lowerCaseCode.includes(filterLower) ||
-                lowerCaseNative.includes(filterLower) ||
-                lowerCaseCapital.includes(filterLower) ||
-                lowerCaseEmoji.includes(filterLower) ||
-                lowerCaseCurrency.includes(filterLower)
-            );
-        }
-
-        return false;
-    });
-
     return (
         <div className='main'>
+            <div className='head'>
             <input
                 className='input'
                 type="text"
@@ -117,25 +116,33 @@ const CountryList: React.FC = () => {
                 value={input}
                 onChange={handleInputChange}
             />
+            <select className='select' value={groupingOption} onChange={handleGroupingInputChange}>
+                <option value="currency">Currency</option>
+                <option value="languages">Languages</option>
+            </select>
+            </div>
             <div className='container'>
                 <ul className='list'>
-                    {filteredCountries.map((country: any) => {
-                        return (
-                            <li
-                                key={country.code}
-                                style={{
-                                    backgroundColor:
-                                        selectedCountry === country.code
-                                            ? predefinedColors[selectedColorIndex !== null ? selectedColorIndex : 0]
-                                            : '',
-                                    cursor: 'pointer',
-                                }}
-                                onClick={() => handleCountryClick(country.code)}
+                    {Object.keys(groupedCountries).map((group, index) => (
+                    <div key={index}>
+                        <h3>{group}</h3>
+                        {groupedCountries[group].map((country) => (
+                            <li key={country.code}
+                            data-country-code={country.code}
+                            style={{
+                                backgroundColor:
+                                    selectedCountry === country.code
+                                        ? predefinedColors[selectedColorIndex !== null ? selectedColorIndex : 0]
+                                        : '',
+                                cursor: 'pointer',
+                            }}
+                            onClick={() => handleCountryClick(country.code)}
                             >
                                 {country.name}, {country.code}, {country.native}, {country.capital}, {country.emoji}, {country.currency}
                             </li>
-                        );
-                    })}
+                        ))}
+                    </div>
+                    ))}
                 </ul>
             </div>
         </div>
